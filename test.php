@@ -8,6 +8,9 @@ function test()
     var_dump("asdfasdfasd");
 
     return $r
+    return $r
+    return $r
+    return $r
 }
 
 /* End of file filename.php */
