@@ -1,0 +1,7 @@
+source "https://rubygems.org"
+
+gem 'jwt'
+gem 'checkstyle_filter-git'
+gem 'saddler'
+gem 'pmd_translate_checkstyle_format'
+gem 'saddler-reporter-github', github: "TKNGUE/ruby-saddler-reporter-github"

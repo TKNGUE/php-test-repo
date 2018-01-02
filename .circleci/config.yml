@@ -1,54 +1,58 @@
 # Ruby CircleCI 2.0 configuration file
 #
 # Check https://circleci.com/docs/2.0/language-ruby/ for more details
-defaults: &defaults
-  docker:
-    - image: circleci/ruby:2.4.2
-    - image: darh/php-essentials@sha256:b8a26d91f0afd5240ca63bab3d4a935d5894fd9d731d79041b4ec04424a15427
-
 cache_gem: &cache_gem
-  key: gems-v1-{{ checksum "Gemfile.lock" }}
-
+  key: gems-v1-{{ checksum ".circleci/Gemfile.lock" }}
 
 version: 2
 jobs:
-  build:
-    <<: *defaults
-    context: org-global
+  test-phpcs:
+    docker:
+      - image: darh/php-essentials@sha256:b8a26d91f0afd5240ca63bab3d4a935d5894fd9d731d79041b4ec04424a15427
     steps:
       - checkout
-      - restore_cache: *cache_gem
-      - run: |
-          cat > Gemfile <<EOT
-          source "https://rubygems.org"
-          gem 'jwt'
-          gem 'checkstyle_filter-git'
-          gem 'saddler'
-          gem 'pmd_translate_checkstyle_format'
-          gem 'saddler-reporter-github', github: "TKNGUE/ruby-saddler-reporter-github"
-          EOT
-          bundle install --deployment
-      - run: echo $GITHUBAPP_PRIVATE_KEY
-      - save_cache: 
-          <<: *cache_gem
+      - run: mkdir results
+      - run: phpcs --report=checkstyle --report-file=results/phpcs.result.xml --standard=Zend --ignore=vendor . || exit 0
+      - run: cat results/phpcs.result.xml
+      - persist_to_workspace:
+          root: results
           paths:
-            - vendor/bundle
+            - ./*
 
-  test:
-    <<: *defaults
+  test-phpmd:
+    docker:
+      - image: darh/php-essentials@sha256:b8a26d91f0afd5240ca63bab3d4a935d5894fd9d731d79041b4ec04424a15427
     steps:
       - checkout
-      - restore_cache: *cache_gem
-      - run: bundle install --deployment
+      - run: mkdir results
+      - run: phpmd . xml codesize,controversial --reportfile results/phpmd.result.xml --exclude vendor || exit 0
+      - persist_to_workspace:
+          root: results
+          paths: 
+            - ./*
+
+  report:
+    docker:
+      - image: circleci/ruby:2.4.2
+    steps:
+      - checkout
+      - run:
+          working_directory: .circleci
+          command: bundle install
       - attach_workspace:
-          at: _site
-      - run: bundle exec htmlproofer ./_site --check-html
+          at: results
+      - run: .circleci/scripts/saddler.sh
+
 
 workflows:
   version: 2
   build_and_deploy:
     jobs:
-      - build
-      - test:
+      - test-phpcs
+      - test-phpmd
+      - report:
+          context:
+            org-global
           requires:
-            - build
+            - test-phpcs
+            - test-phpmd
