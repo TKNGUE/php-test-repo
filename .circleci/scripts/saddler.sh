@@ -7,7 +7,6 @@ export OCTOKIT_BEARER_TOKEN=$(.circleci/scripts/auth_token.sh)
 # --------------------
 #   select reporter
 # --------------------
-
 if [ -z "${CI_PULL_REQUEST}" ]; then
     # when not pull request
     REPORTER=Saddler::Reporter::Github::CommitReviewComment
